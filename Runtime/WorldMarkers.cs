@@ -209,7 +209,7 @@ namespace ME.ECS {
                 UnityEngine.Profiling.Profiler.BeginSample($"Remove Markers");
                 #endif
 
-                world.GetNoStateData().pluginsStorage.Get<MarkersStorage>(ref world.GetNoStateData().allocator, MarkersStorage.key).RemoveMarkers(ref world.GetNoStateData().allocator);
+                world.GetNoStateData().pluginsStorage.GetOrCreate<MarkersStorage>(ref world.GetNoStateData().allocator).RemoveMarkers(ref world.GetNoStateData().allocator);
 
                 #if UNITY_EDITOR
                 UnityEngine.Profiling.Profiler.EndSample();
