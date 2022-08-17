@@ -171,15 +171,27 @@ namespace ME.ECS {
      Unity.IL2CPP.CompilerServices.Il2CppSetOptionAttribute(Unity.IL2CPP.CompilerServices.Option.ArrayBoundsChecks, false),
      Unity.IL2CPP.CompilerServices.Il2CppSetOptionAttribute(Unity.IL2CPP.CompilerServices.Option.DivideByZeroChecks, false)]
     #endif
-    #if UNITY_EDITOR
-    [UnityEditor.InitializeOnLoadAttribute]
-    #endif
     public static class WorldInitializer {
 
-        static WorldInitializer() {
+        private static bool initialized = false;
+        
+        #if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoad]
+        private static class EditorInitializer {
+            static EditorInitializer() => WorldInitializer.Initialize();
+        }
+        #endif
+
+        [UnityEngine.RuntimeInitializeOnLoadMethodAttribute(UnityEngine.RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Initialize() {
             
-            WorldStaticCallbacks.RegisterCallbacks(OnInit, OnDispose);
-            WorldStaticCallbacks.RegisterCallbacks(OnWorldStep);
+            if (WorldInitializer.initialized == false) {
+                
+                WorldStaticCallbacks.RegisterCallbacks(OnInit, OnDispose);
+                WorldStaticCallbacks.RegisterCallbacks(OnWorldStep);
+
+                WorldInitializer.initialized = true;
+            }
             
         }
 
