@@ -1,12 +1,13 @@
 {
-    "name": "ME.ECS.Markers",
+    "name": "ME.ECS.Markers.Editor",
     "rootNamespace": "",
     "references": [
         "ME.ECS",
-        "ME.ECS.IL2CPP",
-        "ME.Pools"
+        "ME.ECS.Editor"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

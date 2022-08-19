@@ -1,167 +1,146 @@
-﻿using System.Collections.Generic;
-using System.Collections;
+﻿#if WORLD_MARKERS_MANAGED
+using System.Collections.Generic;
 
 namespace ME.ECS {
 
-    using ME.ECS.Collections.V3;
-    
-    public static class MarkersCounter {
+    using ME.ECS.Collections;
 
-        public static int counter;
-
-    }
-
-    public static class MarkerInfo<T> {
-
-        public static int id;
-
-    }
-
-    public struct MarkersStorage : IPlugin {
-
-        public static int key;
-
-        public int GetKey() => MarkersStorage.key;
-
-        public MemArrayAllocator<bool> exists;
-        public MemArrayAllocator<UnsafeData> data;
+    public static class MarkersStorage {
         
-        public void Initialize(int key, ref ME.ECS.Collections.V3.MemoryAllocator allocator) {
+        private static class MarkersDirectCache<TMarker> where TMarker : struct, IMarker {
 
-            MarkersStorage.key = key;
+            internal static BufferArray<TMarker> data = new BufferArray<TMarker>();
+            internal static BufferArray<bool> exists = new BufferArray<bool>();
 
         }
 
-        public void RemoveMarkers(ref MemoryAllocator allocator) {
+        private static HashSet<BufferArray<bool>> allExistMarkers;
 
-            for (int i = 0; i < this.exists.Length; ++i) {
+        public static void OnSpawnMarkers() {
+            
+            allExistMarkers = PoolHashSet<BufferArray<bool>>.Spawn(World.WORLDS_CAPACITY);
 
-                if (this.exists[in allocator, i] == true) {
-                    
-                    this.data[in allocator, i].Dispose(ref allocator);
-                    this.exists[in allocator, i] = false;
-                    
-                }
+        }
+
+        public static void OnRecycleMarkers() {
+            
+            PoolHashSet<BufferArray<bool>>.Recycle(ref allExistMarkers);
+
+        }
+
+        public static void RemoveMarkers(World world) {
+
+            foreach (var item in allExistMarkers) {
+
+                item.arr[world.id] = false;
                 
             }
-            
+
         }
 
-        public bool Add<TMarker>(ref MemoryAllocator allocator, TMarker markerData) where TMarker : unmanaged, IMarker {
+        public static bool AddMarker<TMarker>(World world, TMarker markerData) where TMarker : struct, IMarker {
 
-            var id = this.GetId<TMarker>();
-            this.exists.Resize(ref allocator, id + 1);
-            this.data.Resize(ref allocator, id + 1);
+            ref var exists = ref MarkersStorage.MarkersDirectCache<TMarker>.exists;
+            ref var cache = ref MarkersStorage.MarkersDirectCache<TMarker>.data;
 
-            if (this.exists[in allocator, id] == true) {
+            if (ArrayUtils.WillResize(world.id, ref exists) == true) {
 
-                this.data[in allocator, id].Dispose(ref allocator);
-                this.data[in allocator, id] = new UnsafeData().Set(ref allocator, markerData);
+                allExistMarkers.Remove(exists);
+
+            }
+            
+            ArrayUtils.Resize(world.id, ref exists);
+            ArrayUtils.Resize(world.id, ref cache);
+            
+            if (allExistMarkers.Contains(exists) == false) {
+
+                allExistMarkers.Add(exists);
+
+            }
+
+            if (exists.arr[world.id] == true) {
+
+                cache.arr[world.id] = markerData;
                 return false;
-                
+
             }
-            
-            this.exists[in allocator, id] = true;
-            this.data[in allocator, id] = new UnsafeData().Set(ref allocator, markerData);
+
+            exists.arr[world.id] = true;
+            cache.arr[world.id] = markerData;
 
             return true;
 
         }
 
-        public bool Get<TMarker>(ref MemoryAllocator allocator, out TMarker markerData) where TMarker : unmanaged, IMarker {
-
-            var id = this.GetId<TMarker>();
-            this.exists.Resize(ref allocator, id + 1);
-            this.data.Resize(ref allocator, id + 1);
-
-            if (this.exists[in allocator, id] == true) {
-
-                markerData = this.data[in allocator, id].Get<TMarker>(ref allocator);
-                return true;
-                
-            }
+        public static bool GetMarker<TMarker>(World world, out TMarker marker) where TMarker : struct, IMarker {
             
-            markerData = default;
+            ref var exists = ref MarkersStorage.MarkersDirectCache<TMarker>.exists;
+            if (world.id >= 0 && world.id < exists.Length && exists.arr[world.id] == true) {
+
+                ref var cache = ref MarkersStorage.MarkersDirectCache<TMarker>.data;
+                marker = cache.arr[world.id];
+                return true;
+
+            }
+
+            marker = default;
             return false;
 
         }
 
-        public bool Remove<TMarker>(ref MemoryAllocator allocator) where TMarker : unmanaged, IMarker {
+        public static bool HasMarker<TMarker>(World world) where TMarker : struct, IMarker {
+            
+            ref var exists = ref MarkersStorage.MarkersDirectCache<TMarker>.exists;
+            return world.id >= 0 && world.id < exists.Length && exists.arr[world.id] == true;
 
-            var id = this.GetId<TMarker>();
-            this.exists.Resize(ref allocator, id + 1);
-            this.data.Resize(ref allocator, id + 1);
+        }
 
-            if (this.exists[in allocator, id] == true) {
+        public static bool RemoveMarker<TMarker>(World world) where TMarker : struct, IMarker {
+            
+            ref var exists = ref MarkersStorage.MarkersDirectCache<TMarker>.exists;
+            if (world.id >= 0 && world.id < exists.Length && exists.arr[world.id] == true) {
 
-                this.data[in allocator, id].Dispose(ref allocator);
-                this.exists[in allocator, id] = false;
+                ref var cache = ref MarkersStorage.MarkersDirectCache<TMarker>.data;
+                cache.arr[world.id] = default;
+                exists.arr[world.id] = false;
                 return true;
-                
+
             }
-            
+
             return false;
-
-        }
-
-        public bool Has<TMarker>(ref MemoryAllocator allocator) where TMarker : unmanaged, IMarker {
-
-            var id = this.GetId<TMarker>();
-            this.exists.Resize(ref allocator, id + 1);
-            return this.exists[in allocator, id];
-            
-        }
-
-        private int GetId<T>() {
-
-            if (MarkerInfo<T>.id == 0) {
-
-                MarkerInfo<T>.id = ++MarkersCounter.counter;
-
-            }
-
-            return MarkerInfo<T>.id;
 
         }
 
     }
-
+    
     public static class WorldMarkersExtension {
-
-        public static bool AddMarker<TMarker>(this World world, TMarker markerData) where TMarker : unmanaged, IMarker {
+        
+        public static bool AddMarker<TMarker>(this World world, TMarker markerData) where TMarker : IMarker {
 
             E.IS_NOT_LOGIC_STEP(world);
 
-            ref var state = ref world.GetNoStateData();
-            ref var storage = ref state.pluginsStorage.Get<MarkersStorage>(ref state.allocator, MarkersStorage.key);
-            return storage.Add(ref state.allocator, markerData);
-            
-        }
-
-        public static bool GetMarker<TMarker>(this World world, out TMarker marker) where TMarker : unmanaged, IMarker {
-            
-            ref var state = ref world.GetNoStateData();
-            ref var storage = ref state.pluginsStorage.Get<MarkersStorage>(ref state.allocator, MarkersStorage.key);
-            return storage.Get(ref state.allocator, out marker);
-            
-        }
-
-        public static bool HasMarker<TMarker>(this World world) where TMarker : unmanaged, IMarker {
-            
-            ref var state = ref world.GetNoStateData();
-            ref var storage = ref state.pluginsStorage.Get<MarkersStorage>(ref state.allocator, MarkersStorage.key);
-            return storage.Has<TMarker>(ref state.allocator);
+            return MarkersStorage.AddMarker<TMarker>(world, markerData);
 
         }
 
-        public static bool RemoveMarker<TMarker>(this World world) where TMarker : unmanaged, IMarker {
+        public static bool GetMarker<TMarker>(this World world, out TMarker marker) where TMarker : IMarker {
+
+            return MarkersStorage.GetMarker(world, out marker);
+
+        }
+
+        public static bool HasMarker<TMarker>(this World world) where TMarker : IMarker {
+
+            return MarkersStorage.HasMarker<TMarker>(world);
+
+        }
+
+        public static bool RemoveMarker<TMarker>(this World world) where TMarker : IMarker {
             
             E.IS_NOT_LOGIC_STEP(world);
 
-            ref var state = ref world.GetNoStateData();
-            ref var storage = ref state.pluginsStorage.Get<MarkersStorage>(ref state.allocator, MarkersStorage.key);
-            return storage.Remove<TMarker>(ref state.allocator);
-            
+            return MarkersStorage.RemoveMarker<TMarker>(world);
+
         }
         
     }
@@ -209,8 +188,8 @@ namespace ME.ECS {
                 UnityEngine.Profiling.Profiler.BeginSample($"Remove Markers");
                 #endif
 
-                world.GetNoStateData().pluginsStorage.GetOrCreate<MarkersStorage>(ref world.GetNoStateData().allocator).RemoveMarkers(ref world.GetNoStateData().allocator);
-
+                MarkersStorage.RemoveMarkers();
+                
                 #if UNITY_EDITOR
                 UnityEngine.Profiling.Profiler.EndSample();
                 #endif
@@ -225,14 +204,17 @@ namespace ME.ECS {
 
         private static void OnDispose(World world) {
             
+            MarkersStorage.OnRecycleMarkers();
+
         }
 
         private static void OnInit(World world) {
 
-            world.GetNoStateData().pluginsStorage.GetOrCreate<MarkersStorage>(ref world.GetNoStateData().allocator);
+            MarkersStorage.OnSpawnMarkers();
 
         }
 
     }
 
 }
+#endif
