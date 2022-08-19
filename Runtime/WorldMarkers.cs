@@ -115,7 +115,7 @@ namespace ME.ECS {
     
     public static class WorldMarkersExtension {
         
-        public static bool AddMarker<TMarker>(this World world, TMarker markerData) where TMarker : IMarker {
+        public static bool AddMarker<TMarker>(this World world, TMarker markerData) where TMarker : struct, IMarker {
 
             E.IS_NOT_LOGIC_STEP(world);
 
@@ -123,19 +123,19 @@ namespace ME.ECS {
 
         }
 
-        public static bool GetMarker<TMarker>(this World world, out TMarker marker) where TMarker : IMarker {
+        public static bool GetMarker<TMarker>(this World world, out TMarker marker) where TMarker : struct, IMarker {
 
             return MarkersStorage.GetMarker(world, out marker);
 
         }
 
-        public static bool HasMarker<TMarker>(this World world) where TMarker : IMarker {
+        public static bool HasMarker<TMarker>(this World world) where TMarker : struct, IMarker {
 
             return MarkersStorage.HasMarker<TMarker>(world);
 
         }
 
-        public static bool RemoveMarker<TMarker>(this World world) where TMarker : IMarker {
+        public static bool RemoveMarker<TMarker>(this World world) where TMarker : struct, IMarker {
             
             E.IS_NOT_LOGIC_STEP(world);
 
