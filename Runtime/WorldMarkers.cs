@@ -188,7 +188,7 @@ namespace ME.ECS {
                 UnityEngine.Profiling.Profiler.BeginSample($"Remove Markers");
                 #endif
 
-                MarkersStorage.RemoveMarkers();
+                MarkersStorage.RemoveMarkers(world);
                 
                 #if UNITY_EDITOR
                 UnityEngine.Profiling.Profiler.EndSample();
