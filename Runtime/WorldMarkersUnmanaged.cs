@@ -2,7 +2,8 @@
 
 namespace ME.ECS {
 
-    using ME.ECS.Collections.V3;
+    using ME.ECS.Collections.LowLevel;
+    using ME.ECS.Collections.LowLevel.Unsafe;
     
     public static class MarkersCounter {
 
@@ -25,7 +26,7 @@ namespace ME.ECS {
         public MemArrayAllocator<bool> exists;
         public MemArrayAllocator<UnsafeData> data;
         
-        public void Initialize(int key, ref ME.ECS.Collections.V3.MemoryAllocator allocator) {
+        public void Initialize(int key, ref MemoryAllocator allocator) {
 
             MarkersStorage.key = key;
 
